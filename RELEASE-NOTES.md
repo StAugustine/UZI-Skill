@@ -1,5 +1,69 @@
 # Release Notes
 
+## v2.15.5 — 2026-04-23 (评分公式重校准 · 混合公式 + 极化拉伸)
+
+> **用户反馈**："现在评分大多数都在一个区间内徘徊，你看看是什么问题，是否需要优化"
+
+### 诊断（采 7 股 · 331 个非 skip 打分）
+
+- 单 investor score: mean=43.7, stdev=30.3, range 0-100（分布其实很宽）
+- 但 `panel_consensus` 聚集在 40-55 区间 · 7 流派内分歧 stdev 往往 <15
+- **根因 1**：v2.11 公式 `(bullish + 0.6*neutral)/active*100` 只看 signal 计数 · 把连续 score 压成 3 分类（65/35 阈值）· 丢失"程度"信息
+- **根因 2**：价值/成长派规则严苛 · 平均 score 35 左右 · 比技术/量化派低 20 分 · 结构性居中
+
+### 修法 · 混合公式 + 极化拉伸
+
+```python
+# Step 1 · 混合连续分 + 离散票
+score_mean    = mean(score for active)           # 0-100 连续 · 反映强度
+vote_weighted = (bullish + 0.6*neutral)/active*100  # 原 v2.11 · 保留投票机制
+raw           = 0.65 * score_mean + 0.35 * vote_weighted
+
+# Step 2 · 极化拉伸（50 为中心，k=1.3）· 让两端更极端
+final = clip(50 + (raw - 50) * 1.3, 0, 100)
+```
+
+**效果对比（7 股样本）**：
+
+| 指标 | v2.11 公式 | v2.15.5 公式 |
+|---|---|---|
+| 总盘 consensus mean | 46.9 | 42.2 |
+| 总盘 consensus range | 16.5-77.9 | 8.4-76.8 |
+| 强势 300308 | 77.9 | 76.8（持平） |
+| 弱势 600120 | 16.5 | 8.4（更弱）|
+| 002217 F 游资 | 51.0 关注 | 43.7 谨慎（修正高估）|
+| 002217 G 量化 | 50.0 关注 | 59.3 关注（修正低估）|
+
+**002217 (中密控股) v2.15.5 分布**：
+
+| 流派 | consensus | 实分均值 | 投票共识 | verdict |
+|---|---|---|---|---|
+| 经典价值派 | 34.7 | 37.3 | 40.0 | 回避 |
+| 成长派 | 27.2 | 36.5 | 25.0 | 回避 |
+| 宏观派 | **67.3** | 60.8 | 68.0 | **买入** |
+| 技术派 | 38.1 | 41.2 | 40.0 | 谨慎 |
+| 中式价投 | 29.5 | 36.5 | 30.0 | 回避 |
+| A 股游资 | 43.7 | 42.0 | 51.0 | 谨慎 |
+| 量化派 | 59.3 | 61.0 | 50.0 | 关注 |
+
+结论清晰：**宏观有利但基本面乏力**. 以前"F 游资 51 关注"被 neutral 投票机制高估 · 实分 42 说明大家其实都是"不看好但也不讨厌"的 40 分心态 · 新公式修正了.
+
+### 改动
+
+- `run_real_test.py::generate_panel` · 引入 `SCORE_WEIGHT=0.65 / VOTE_WEIGHT=0.35 / POLARIZE_K=1.30` 常量 · 加 `_polarize()` helper · 总盘 + school_scores 同步升级
+- `panel.school_scores[g]` 新增 `score_mean` / `vote_consensus` 两个分量字段 · `consensus` 为极化后最终值
+- `consensus_formula` 诊断 dict 新增 `score_weight` / `vote_weight` / `polarize_k` / `score_mean` / `vote_weighted` / `consensus_raw` / `consensus_final`
+- `assemble_report.py::render_school_scores` 卡片下方显示"流派分 X.X · 实分均值 · 投票共识" · hover tip 带全分量
+- `lib/self_review.py::check_consensus_formula_sanity` 版本校验放宽 · 支持 v2.9.1 / v2.11 / v2.15.5
+
+### 回归测试
+
+- `tests/test_v2_15_4_school_scores.py` 升级为 9 tests · 含混合公式数学 + 极化边界 + 分量字段 · 全过 ✅
+- `tests/test_v2_11_scoring_calibration.py::test_consensus_formula_version_label_v2_11` 更新接受 v2.15.5
+- 总套件 253 tests 全过
+
+---
+
 ## v2.15.4 — 2026-04-22 (按流派打分 · 7 大学派各自评分)
 
 > **用户反馈**："打分系统我觉得可能还要优化一下，我们现在有几个流派，那么除了有一个最终分数，还要有不同流派各自给出的分数"

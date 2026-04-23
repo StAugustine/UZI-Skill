@@ -7,6 +7,32 @@
 
 ---
 
+## v2.15.5 (2026-04-23 · 评分聚集在一个区间 · 区分度不足)
+
+### BUG · consensus 公式把连续分压成三分类 + 规则严苛导致结构性居中
+- **症状**：用户反馈"现在评分大多数都在一个区间内徘徊" · 采 7 股数据 consensus 聚集 40-55 · 流派间分歧 stdev 常 < 15
+- **位置**：`run_real_test.py::generate_panel`（v2.11 原公式）+ `lib/investor_evaluator.py:69`（BULLISH_THRESHOLD=65 / BEARISH_THRESHOLD=35）
+- **根因 1（最主要）**：v2.11 公式 `(bullish + 0.6*neutral)/active*100` 只看 signal 计数 · 单 investor score 虽然 stdev=30 信息丰富 · 但被压成 3 分类后"打 55 分"和"打 40 分"一样算 neutral 贡献 · 程度丢失
+- **根因 2**：A 成长派规则严苛 · 平均 score 35 · D 技术派 51 · G 量化 58 · 跨流派结构性偏差 20 分
+- **影响**：7 流派 consensus 分布挤在 30-55 区间 · 用户看不出"宏观派买入 vs 价值派回避"这种真正的分歧信号
+- **修法**（3 步）：
+  1. `generate_panel` 引入 `SCORE_WEIGHT=0.65 + VOTE_WEIGHT=0.35` 混合公式 · `raw = 0.65*score_mean + 0.35*vote_weighted`
+  2. 加 `_polarize(c, k=1.3)` helper · `final = clip(50 + (raw-50)*1.3, 0, 100)` · 以 50 为中心把两端拉开
+  3. 总盘 + `school_scores` 每个流派同步升级 · 新增 `score_mean` / `vote_consensus` 分量字段让用户看到"实分 vs 投票"的拆解
+- **验证**：
+  - 002217 F 游资 51→43.7（vote 机制高估修正·实分 42）· G 量化 50→59.3（实分 61 低估修正）
+  - 总盘 range 从 62 → 68 分（两端更极端）
+  - 7 股样本没有再聚集 40-55 区间
+- **回归测试**：`tests/test_v2_15_4_school_scores.py`（9 tests · 含 `test_mixed_formula_polarizes_extremes` 校验数学 · `test_consensus_formula_in_panel_has_mixed_components` 守护常量）
+- **未来改该区域注意事项**：
+  - `SCORE_WEIGHT + VOTE_WEIGHT` 必须 == 1.0 · 否则 raw 会偏置
+  - `POLARIZE_K` 调大（>1.5）会让 consensus 容易贴 0/100 · 不建议 · 想进一步拉开优先改 BULLISH_THRESHOLD
+  - 若修改 `NEUTRAL_WEIGHT`（0.6→其他）· 必须同步 `stock_style.py::apply_style_weights` 里的 `neutral_w += w * 0.6`（v2.11 耦合）
+  - `_polarize` 对 50 分不变 · 如果改变中心点需要同步更新 `_consensus_to_verdict` 阈值
+  - 新增流派时 `school_scores` 聚合会自动处理 · 但 `GROUP_META` 要同步加 label + desc
+
+---
+
 ## v2.15.4 (2026-04-22 · panel 只有总分看不到流派分歧)
 
 ### FEATURE · 按流派打分 (school_scores)

@@ -2132,6 +2132,8 @@ def render_school_scores(syn: dict, panel: dict) -> str:
         label = s.get("label", g)
         cons = s.get("consensus", 0)
         avg = s.get("avg_score", 0)
+        score_mean = s.get("score_mean", avg)     # v2.15.5 分量
+        vote_cons = s.get("vote_consensus", cons)  # v2.15.5 分量
         verdict = s.get("verdict", "—")
         n_members = s.get("n_members", 0)
         n_active = s.get("n_active", 0)
@@ -2146,8 +2148,10 @@ def render_school_scores(syn: dict, panel: dict) -> str:
 
         # 柱状共识度（0-100）· 用 linear-gradient 直观表达
         bar_fill = max(0, min(100, cons))
+        # v2.15.5 · 分量 tooltip：让鼠标悬停能看到"实分 x.x · 投票 y.y"
+        tip = f"score_mean={score_mean:.1f} · vote_weighted={vote_cons:.1f} · 极化后 {cons:.1f}"
         items.append(
-            f'<div style="background:{bg};border-radius:8px;padding:14px 16px;'
+            f'<div title="{tip}" style="background:{bg};border-radius:8px;padding:14px 16px;'
             f'border:1px solid rgba(0,0,0,0.05)">'
             f'  <div style="display:flex;justify-content:space-between;align-items:baseline">'
             f'    <div style="font-weight:600;font-size:14px;color:{fg}">'
@@ -2161,7 +2165,10 @@ def render_school_scores(syn: dict, panel: dict) -> str:
             f'      <div style="height:6px;background:rgba(0,0,0,0.06);border-radius:3px;overflow:hidden">'
             f'        <div style="height:100%;width:{bar_fill}%;background:linear-gradient(90deg,{fg} 0%,{fg} 100%);opacity:0.75"></div>'
             f'      </div>'
-            f'      <div style="font-size:10px;color:#9ca3af;margin-top:3px">共识度 {cons:.0f}% · 均分 {avg:.1f}</div>'
+            f'      <div style="font-size:10px;color:#9ca3af;margin-top:3px">'
+            f'        流派分 <strong style="color:{fg};font-size:12px">{cons:.1f}</strong>'
+            f'        <span style="color:#d1d5db"> · 实分均值 {score_mean:.1f} · 投票共识 {vote_cons:.0f}%</span>'
+            f'      </div>'
             f'    </div>'
             f'    <div style="font-size:11px;color:#374151;white-space:nowrap">'
             f'      <span style="color:#059669">📈{bull}</span> · '
@@ -2183,7 +2190,8 @@ def render_school_scores(syn: dict, panel: dict) -> str:
         f'  <div style="font-size:11px;color:#7c3aed;letter-spacing:2px;'
         f'margin-bottom:4px">🎭 SCHOOL SCORES · 七大流派各自评分</div>'
         f'  <div style="font-size:12px;color:#6b7280;margin-bottom:14px">'
-        f'不同哲学给出不同分数 · 分歧越大通常意味着结论越不稳 · 一致看好才是真共识'
+        f'混合打分 = 0.65 × 实分均值 + 0.35 × 投票共识 · 再做极化拉伸(k=1.3) · '
+        f'不同哲学给出不同分数 · 分歧越大意味着结论越不稳 · 鼠标悬停查看分量'
         f'  </div>'
         f'  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px">'
         + "".join(items) +
