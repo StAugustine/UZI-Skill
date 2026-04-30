@@ -1,5 +1,49 @@
 # Release Notes
 
+## v3.3.2 — 2026-04-28 (GitHub issue #50 + #51 hotfix)
+
+> **用户反馈**："请你检查 github 的 issue · 收集 bug 和他们反馈的修复方法 · 更新 skills"
+
+### Bug #50 · Stage 2 总是超时（NameError 根因）
+
+**症状**：用户 @chenxiang-bj 反馈 "Stage 2 总是超时" · 评论里 agent 已经诊断出根因.
+
+**根因**：v3.2 拆分 `assemble_report.py` → `lib/report/*` 时 · `institutional.py` 用了 `svg_sparkline` 但没加进 import 块（只 import 了 `svg_gauge` / `svg_progress_row`）。
+
+**触发**：跑到 `_render_lbo_block` · 当 `dim20.lbo.ebitda_path` 或 `debt_schedule` 非空时调用 `svg_sparkline(...)` → `NameError: name 'svg_sparkline' is not defined` → stage2 整个崩 → 用户看到的"超时"实际是异常静默吞了.
+
+**修法**：`lib/report/institutional.py` 加 `svg_sparkline` 到 import 行.
+
+### Bug #51 · XueQiu cubes_search.json endpoint 已下线
+
+**症状**：用户 @bilieebiliee1-design 反馈"XueQiu 登录成功但验证失败" · cookie 保存了但 `cubes_search.json` 仍 400.
+
+**根因**：XueQiu 把 `/cubes/cubes_search.json` 老 endpoint 完全下线.
+
+**社区修法（@Kylin824 评论）**：改用 `/query/v1/search/cube/stock.json?q={xq_symbol}&count={limit}&page=1`.
+
+**修法**：3 处同步换 endpoint
+- `lib/xueqiu_browser.py::LOGIN_TEST_URL` (登录验证)
+- `lib/xueqiu_browser.py::fetch_cubes_via_browser`
+- `fetch_contests.py::fetch_xueqiu_cubes` (HTTP 直访路径)
+
+### 回归测试
+
+新增 `tests/test_v3_3_2_issue_fixes.py` (5 tests)：
+- institutional 必须 import svg_sparkline
+- _render_lbo_block 实跑不抛 NameError
+- 3 处必须用新 endpoint
+
+**总套件 337 tests 全过**（332 + 5 新）· 002217 真机 e2e 78s 出 614 KB HTML.
+
+### 致谢
+
+- @chenxiang-bj · 报告 #50 + agent 诊断
+- @bilieebiliee1-design · 报告 #51
+- @Kylin824 · #51 提供新 endpoint URL
+
+---
+
 ## v3.3.1 — 2026-04-28 (Hermes 兼容回归修复)
 
 > **用户反馈**："UZI-Skill 是不是更新了不支持 hermes，之前的可以，现在开始报错了"

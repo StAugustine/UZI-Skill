@@ -12,7 +12,7 @@
 [![Methods](https://img.shields.io/badge/Institutional%20Methods-17-red)]()
 [![Self-Review](https://img.shields.io/badge/Self--Review-13%20checks-blueviolet)](skills/deep-analysis/scripts/lib/self_review.py)
 
-A 股 / 港股 / 美股 · 个股深度分析引擎 · **v3.3.1 Hermes 兼容回归修复 · v3.2.0 assemble_report -80% · v3.1.0 rrt -65% · v3.0.0 pipeline 默认启用**
+A 股 / 港股 / 美股 · 个股深度分析引擎 · **v3.3.2 GitHub issue #50/#51 hotfix · v3.3.1 Hermes 兼容修复 · v3.2.0 assemble_report -80% · v3.0.0 pipeline 默认**
 
 [安装](#安装) · [用法](#用法) · [三档深度](#-三档思考深度v2103-新增) · [Hermes 🆕](INSTALL-HERMES.md) · [评审团](#-51-位评审团) · [机构方法](#-17-种机构级方法) · [自查 gate](#-机械级自查-gatev29-起) · [报告截图](#-报告长什么样) · [FAQ](#-faq) · [入群交流测试](#-测试交流群) · [Contributors](CONTRIBUTORS.md)
 
@@ -45,8 +45,9 @@ A 股 / 港股 / 美股 · 个股深度分析引擎 · **v3.3.1 Hermes 兼容回
 /stock-deep-analyzer:dcf 600519                ← DCF 估值专项
 ```
 
-> 💡 **当前最新稳定版 v3.3.1**：
-> - **v3.3.1** · 🆕 **Hermes 兼容回归修复**（v3.x 重构期 main 缺 hermes 适配 · 群友报错根因）· main 分支现在直接支持 `hermes skills install`
+> 💡 **当前最新稳定版 v3.3.2**：
+> - **v3.3.2** · 🆕 **GitHub issue #50 + #51 hotfix**（社区报告驱动）· #50 institutional 漏 import svg_sparkline 致 Stage 2 NameError · #51 XueQiu cubes_search.json endpoint 下线 → 改 query/v1/search/cube/stock.json (致谢 @chenxiang-bj / @bilieebiliee1-design / @Kylin824)
+> - **v3.3.1** · Hermes 兼容回归修复（v3.x 重构期 main 缺 hermes 适配 · 群友报错根因）· main 分支现在直接支持 `hermes skills install`
 > - **v3.3.0** · 分支整合 · segmental 渲染层 cherry-pick 到 v3.2 架构 · 22 个 stale 分支清理（仅保留 main + hermes-compat）
 > - **v3.2.0** · `assemble_report.py` 2964 → 587 行（-80%）· 拆 5 个 `lib/report/*.py` 子模块
 > - **v3.1.0** · `run_real_test.py` 2105 → 735 行（-65%）· 1228 行纯函数迁到 `lib/pipeline/score_fns.py`
@@ -717,6 +718,7 @@ python run.py <ticker> --no-resume
 
 | 版本 | 日期 | 主要变化 |
 |---|---|---|
+| **v3.3.2** | 2026-04-28 | **GitHub issue #50 + #51 hotfix**（社区驱动）· #50 [Stage 2 总是超时](https://github.com/wbh604/UZI-Skill/issues/50)：v3.2 拆分时 `lib/report/institutional.py` 漏 import `svg_sparkline` · `_render_lbo_block` 触发 NameError → stage2 崩 · 加进 import 块即修复（致谢 @chenxiang-bj 报告 + agent 诊断）。#51 [XueQiu 登录验证失败](https://github.com/wbh604/UZI-Skill/issues/51)：`/cubes/cubes_search.json` endpoint 已下线 · 改用 `/query/v1/search/cube/stock.json?q={code}` (致谢 @bilieebiliee1-design 报告 + @Kylin824 提供 fix)。3 处文件同步换 endpoint。新增 5 个回归 test · 总 337 passed |
 | **v3.3.1** | 2026-04-28 | **Hermes 兼容回归修复 (hotfix)** · 群友反馈"更新后不支持 hermes 报错"。根因：v3.0/v3.1/v3.2 重构期 main 上从未包含 hermes 兼容代码（`INSTALL-HERMES.md` / `skills/deep-analysis/run.py` / `requirements.txt` / 4 个 SKILL.md hermes metadata 全缺）· 但 README 仍叫 hermes 用户装 main · 装下来缺文件就崩。修复：从 `hermes-compat` 分支 cherry-pick 5 项核心适配到 main + `run.py` 加双 layout 探测。**hermes 用户重装一次 skill 即恢复**（`hermes skills uninstall` + install 4 个）|
 | **v3.3.0** | 2026-04-23 | **分支大整合**：唯一未合 feature（v2.10 segmental 渲染层 · 228 行 + 222 CSS）cherry-pick 到 v3.2 架构 · 新建 `lib/report/segmental.py` (555 行)。同时清理 22 个 stale 分支（refactor/* / docs/* / feature/v2.14-v2.15.3 都已 superseded）· 仅保留 main + hermes-compat · 单一开发主干. |
 | **v3.2.0** | 2026-04-23 | **assemble_report.py 深度拆分 (-80%)**：2964 → 587 行 · 拆 5 个子模块 `lib/report/svg_primitives` (602) / `dim_viz` (742) / `institutional` (532) / `panel_cards` (183) / `special_cards` (544)。v2.x 所有 API 保持 re-export · 332 tests 全过 · e2e 零差异 · 加 `CODEX.md` + `AGENTS.md::Repository Layout` 给 codex 准确入口指引 |
